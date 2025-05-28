@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Field Service Tracker</title>
+    <style>
+        .block {
+            border: 1px solid #ccc;
+            padding: 10px;
+            margin: 10px;
+            display: inline-block;
+            width: 200px;
+        }
+        .completed {
+            background-color: #d4edda;
+            border-color: #c3e6cb;
+        }
+    </style>
+</head>
+<body>
+    <h1>Field Service Data</h1>
+    <form method="POST">
+        {% for block, data in blocks.items() %}
+        <div class="block {% if data.completed %}completed{% endif %}">
+            <h3>{{ block }}</h3>
+            {% for i in range(7) %}
+            <label>
+             	<input class="form-check-input" type="checkbox" name="floors" value="{{ i }}" id="{{ block }}_floor_{{ i }}" {% if checked %}checked{% endif %}>
+
+                Floor {{ i + 1 }}
+            </label><br>
+            {% endfor %}
+        </div>
+        {% endfor %}
+        <br><br>
+        <button type="submit">Save Progress</button>
+    </form>
+</body>
+</html>

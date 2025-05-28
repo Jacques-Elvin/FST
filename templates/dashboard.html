@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Field Service Tracker</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        #loading-overlay {
+            position: fixed;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.8);
+            top: 0;
+            left: 0;
+            z-index: 9999;
+            display: none;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .spinner-border {
+            width: 3rem;
+            height: 3rem;
+        }
+
+        button:active {
+            transform: scale(0.97);
+            transition: transform 0.1s ease-in-out;
+        }
+
+        button:hover {
+            transform: scale(1.02);
+            transition: transform 0.2s ease;
+        }
+
+        .card {
+            opacity: 0;
+            transform: translateY(20px);
+            animation: fadeInUp 0.5s ease forwards;
+        }
+
+        .card:nth-child(2) {
+            animation-delay: 0.1s;
+        }
+
+        .card:nth-child(3) {
+            animation-delay: 0.2s;
+        }
+
+        @keyframes fadeInUp {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+    </style>
+</head>
+
+<body class="bg-body-tertiary">
+    <div id="loading-overlay">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+    </div>
+
+    <div class="container mt-4">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2>Field Service Tracker</h2>
+            <div>
+                <a href="{{ url_for('logout') }}" class="btn btn-outline-danger">Logout</a>
+                <a href="{{ url_for('download') }}" class="btn btn-outline-secondary">Download Excel</a>
+                <a href="{{ url_for('report') }}" class="btn btn-outline-info">View Report</a>
+            </div>
+        </div>
+
+        <form class="mb-4 d-flex" id="addBlockForm">
+            <input type="hidden" name="action" value="add">
+            <input type="text" name="block" class="form-control me-2" placeholder="New Block Name (e.g. Block A1)"
+                required>
+            <button type="submit" class="btn btn-success">Add Block</button>
+        </form>
+
+        <div class="row" id="blocksContainer">
+            <!-- Blocks will be dynamically added here -->
+        </div>
+    </div>
+
+    <script>
+        // Initialize blocks data from localStorage or use default
+        let blockData = JSON.parse(localStorage.getItem('blockData')) || {};
+        let completedBlocks = JSON.parse(localStorage.getItem('completedBlocks')) || {};
+
+        // Function to render blocks
+        function renderBlocks() {
+            const container = document.getElementById('blocksContainer');
+            container.innerHTML = '';
+
+            Object.entries(blockData).forEach(([block, floors]) => {
+                const completedCount = floors.filter(f => f).length;
+                const progress = (completedCount / 7) * 100;
+                const isCompleted = completedBlocks[block];
+
+                const blockHtml = `
+                <div class="col-md-4 mb-4">
+                    <div class="card shadow-sm">
+                        <div class="card-body">
+                            <h5 class="card-title mb-2">
+                                Block ${block}
+                                ${isCompleted ? '<span class="badge bg-success">Completed</span>' : ''}
+                            </h5>
+
+                            <div class="progress mb-3">
+                                <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar"
+                                     style="width: ${progress}%;" aria-valuenow="${progress}"
+                                     aria-valuemin="0" aria-valuemax="100">
+                                    ${completedCount}/7
+                                </div>
+                            </div>
+
+                            <form onsubmit="updateBlock(event, '${block}')">
+                                <input type="hidden" name="action" value="update">
+                                <input type="hidden" name="block" value="${block}">
+                                <div class="form-check">
+                                    ${floors.map((checked, i) => `
+                                        <div>
+                                            <input class="form-check-input" type="checkbox" name="floors" value="${i}"
+                                                   id="${block}_floor_${i}" 
+                                                   ${checked ? 'checked' : ''}>
+                                            <label class="form-check-label" for="${block}_floor_${i}">
+                                                Floor ${i + 1}
+                                            </label>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                                <button type="submit" class="btn btn-sm btn-primary mt-2">Save</button>
+                            </form>
+
+                            <button onclick="deleteBlock('${block}')" class="btn btn-sm btn-outline-danger mt-2">Delete Block</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+                container.innerHTML += blockHtml;
+            });
+        }
+
+        // Function to add new block
+        document.getElementById('addBlockForm').addEventListener('submit', function (e) {
+            e.preventDefault();
+            const blockName = this.querySelector('[name="block"]').value;
+            const floors = Array(7).fill(false);
+
+            fetch('/update-block', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    block: blockName,
+                    floors: floors
+                })
+            }).then(() => {
+                window.location.reload();
+            });
+        });
+
+        // Function to update block
+        function updateBlock(e, block) {
+            e.preventDefault();
+            const form = e.target;
+            const checkboxes = form.querySelectorAll('input[type="checkbox"]');
+            const floors = Array.from(checkboxes).map(cb => cb.checked);
+
+            fetch('/update-block', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    block: block,
+                    floors: floors
+                })
+            }).then(() => {
+                window.location.reload();
+            });
+        }
+
+        // Function to delete block
+        function deleteBlock(block) {
+            if (confirm('Are you sure you want to delete this block?')) {
+                fetch('/delete-block', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        block: block
+                    })
+                }).then(() => {
+                    window.location.reload();
+                });
+            }
+        }
+
+        // Initial render
+        renderBlocks();
+
+        // Loading overlay
+        document.querySelectorAll("form").forEach(form => {
+            form.addEventListener("submit", () => {
+                document.getElementById("loading-overlay").style.display = "flex";
+            });
+        });
+    </script>
+</body>
+
+</html>

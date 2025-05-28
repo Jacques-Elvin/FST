@@ -1,0 +1,8 @@
+Flask==2.3.3
+Flask-Login==0.6.2
+Flask-Bcrypt==1.0.1
+Flask-SQLAlchemy==3.1.1
+Werkzeug==2.3.7
+openpyxl==3.1.2
+python-dotenv==1.0.0
+gunicorn==21.2.0 
