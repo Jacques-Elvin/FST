@@ -2,10 +2,24 @@ services:
   - type: web
     name: field-service-tracker
     env: python
-    buildCommand: pip install -r requirements.txt
+    buildCommand: |
+      pip install -r requirements.txt
+      python -c "from app import init_db; init_db()"
     startCommand: gunicorn app:app
     envVars:
       - key: PYTHON_VERSION
         value: 3.11.0
       - key: SECRET_KEY
         generateValue: true
+      - key: DATABASE_URL
+        fromDatabase:
+          name: field-service-db
+          property: connectionString
+      - key: FLASK_ENV
+        value: production
+
+databases:
+  - name: field-service-db
+    databaseName: field_service
+    user: field_service_user
+    plan: free
