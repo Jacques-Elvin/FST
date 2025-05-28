@@ -2,7 +2,7 @@
 <html>
 
 <head>
-    <title>Field Service Tracker</title>
+    <title>Admin Dashboard - Field Service Tracker</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
         #loading-overlay {
@@ -21,16 +21,6 @@
         .spinner-border {
             width: 3rem;
             height: 3rem;
-        }
-
-        button:active {
-            transform: scale(0.97);
-            transition: transform 0.1s ease-in-out;
-        }
-
-        button:hover {
-            transform: scale(1.02);
-            transition: transform 0.2s ease;
         }
 
         .card {
@@ -57,6 +47,15 @@
         .floor-checkbox {
             margin: 5px 0;
         }
+
+        .admin-badge {
+            background-color: #dc3545;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.8em;
+            margin-left: 8px;
+        }
     </style>
 </head>
 
@@ -69,7 +68,10 @@
 
     <div class="container mt-4">
         <div class="d-flex justify-content-between align-items-center mb-4">
-            <h2>Field Service Tracker</h2>
+            <div>
+                <h2>Admin Dashboard <span class="admin-badge">Admin</span></h2>
+                <p class="text-muted">Manage blocks and monitor progress</p>
+            </div>
             <div>
                 <a href="{{ url_for('logout') }}" class="btn btn-outline-danger">Logout</a>
                 <a href="{{ url_for('download') }}" class="btn btn-outline-secondary">Download Excel</a>
@@ -77,11 +79,31 @@
             </div>
         </div>
 
-        <form class="mb-4 d-flex" id="addBlockForm">
-            <input type="text" name="block" class="form-control me-2" placeholder="New Block Name (e.g. Block A1)"
-                required>
-            <button type="submit" class="btn btn-success">Add Block</button>
-        </form>
+        <div class="row mb-4">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title">Add New Block</h5>
+                        <form id="addBlockForm">
+                            <div class="mb-3">
+                                <input type="text" name="block" class="form-control"
+                                    placeholder="New Block Name (e.g. Block A1)" required>
+                            </div>
+                            <button type="submit" class="btn btn-success">Add Block</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title">Quick Stats</h5>
+                        <p>Total Blocks: {{ block_data|length }}</p>
+                        <p>Completed Blocks: {{ block_data|selectattr('completed', 'equalto', true)|list|length }}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
 
         <div class="row" id="blocksContainer">
             {% for block_name, floors in block_data.items() %}

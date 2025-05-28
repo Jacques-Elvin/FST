@@ -151,22 +151,44 @@ def register():
 @app.route('/admin/login', methods=['GET', 'POST'])
 def admin_login():
     if current_user.is_authenticated and current_user.is_admin:
-        return redirect(url_for('dashboard'))
+        return redirect(url_for('admin_dashboard'))
     
     if request.method == 'POST':
-        username = request.form.get('username')
-        password = request.form.get('password')
-        user = User.query.filter_by(username=username, is_admin=True).first()
-        
-        if user and bcrypt.check_password_hash(user.password, password):
-            login_user(user)
-            return redirect(url_for('dashboard'))
-        flash('Invalid admin credentials')
+        try:
+            username = request.form.get('username')
+            password = request.form.get('password')
+            user = User.query.filter_by(username=username, is_admin=True).first()
+            
+            if user and bcrypt.check_password_hash(user.password, password):
+                login_user(user)
+                app.logger.info(f'Admin {username} logged in successfully')
+                return redirect(url_for('admin_dashboard'))
+            flash('Invalid admin credentials')
+            app.logger.warning(f'Failed admin login attempt for user {username}')
+        except Exception as e:
+            app.logger.error(f'Error during admin login: {str(e)}')
+            flash('An error occurred during login. Please try again.')
     return render_template('admin_login.html')
+
+@app.route('/admin/dashboard')
+@login_required
+def admin_dashboard():
+    if not current_user.is_admin:
+        flash('Access denied. Admin privileges required.')
+        return redirect(url_for('dashboard'))
+    
+    blocks = Block.query.all()
+    block_data = {}
+    for block in blocks:
+        block_data[block.name] = json.loads(block.floors)
+    return render_template('admin_dashboard.html', block_data=block_data)
 
 @app.route('/dashboard')
 @login_required
 def dashboard():
+    if current_user.is_admin:
+        return redirect(url_for('admin_dashboard'))
+    
     blocks = Block.query.all()
     block_data = {}
     for block in blocks:
@@ -263,6 +285,23 @@ def download():
 def logout():
     logout_user()
     return redirect(url_for('login'))
+
+@app.route('/assign-block', methods=['POST'])
+@login_required
+def assign_block():
+    if not current_user.is_admin:
+        return jsonify({'status': 'error', 'message': 'Unauthorized'}), 403
+    
+    data = request.get_json()
+    block_name = data.get('block')
+    user_id = data.get('user_id')
+    
+    block = Block.query.filter_by(name=block_name).first()
+    if block:
+        block.assigned_to = user_id
+        db.session.commit()
+        return jsonify({'status': 'success'})
+    return jsonify({'status': 'error', 'message': 'Block not found'}), 404
 
 if __name__ == '__main__':
     app.run(debug=True)
